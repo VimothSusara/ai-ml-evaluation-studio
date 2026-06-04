@@ -151,9 +151,3 @@ More detail: [backend/README.md](backend/README.md), [frontend/README.md](fronte
 - One Celery worker process is assumed on Windows dev (`--pool=solo`).
 - Artifacts are joblib + JSON manifest, not ONNX.
 - Multiclass ROC is not plotted (binary only).
-
----
-
-## License
-
-Add a license file when you publish the repo (MIT is a common choice for portfolio work).
