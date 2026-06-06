@@ -76,6 +76,7 @@ def _serialize_experiment(exp: Experiment, db: Session) -> dict:
         "target_column": exp.target_column,
         "problem_type": exp.problem_type,
         "problem_type_override": exp.problem_type_override,
+        "pipeline_kind": exp.pipeline_kind,
         "status": exp.status,
         "metrics": metrics,
         "evaluation": evaluation,

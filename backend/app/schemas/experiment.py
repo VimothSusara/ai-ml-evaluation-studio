@@ -36,6 +36,7 @@ class ExperimentOut(BaseModel):
     target_column: str
     problem_type: str
     problem_type_override: str | None = None
+    pipeline_kind: str | None = None
     status: str
     metrics: dict[str, Any] | None = None
     evaluation: dict[str, Any] | None = None

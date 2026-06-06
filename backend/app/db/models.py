@@ -41,6 +41,9 @@ class ProblemType(Base):
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    pipeline_kind: Mapped[str] = mapped_column(
+        String(50), default="tabular_sklearn", nullable=False
+    )
     models: Mapped[list["ProblemTypeModel"]] = relationship(back_populates="problem_type")
     requirements: Mapped["ModelRequirement | None"] = relationship(back_populates="problem_type")
 
@@ -52,6 +55,7 @@ class ModelDefinition(Base):
     display_name: Mapped[str] = mapped_column(String(120))
     estimator_key: Mapped[str] = mapped_column(String(80))
     default_params_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pipeline_config_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     problem_links: Mapped[list["ProblemTypeModel"]] = relationship(back_populates="model")
 
@@ -118,6 +122,7 @@ class Experiment(Base):
     target_column: Mapped[str] = mapped_column(String(255))
     problem_type: Mapped[str] = mapped_column(String(50), default="unknown")
     problem_type_override: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    pipeline_kind: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="queued")
     metrics_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     explanation_text: Mapped[str | None] = mapped_column(Text, nullable=True)

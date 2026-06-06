@@ -6,14 +6,16 @@ import pandas as pd
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
+import app.services.trainers  # noqa: F401
 from app.core.celery_app import celery_app
 from app.core.config import get_settings
 from app.db.models import Dataset, Experiment, Job, ModelDefinition, ModelRun
 from app.services.explanation_service import explain_metrics
 from app.services.profiling_service import build_profile, read_csv_bytes, sanitize_dataframe
+from app.services.pipeline_registry import get_pipeline_kind, train_with_pipeline
 from app.services.recommendation_service import resolve_model_codes
 from app.services.storage_service import StorageService
-from app.services.training_service import pick_best_run, train_single_model
+from app.services.training_service import pick_best_run
 from app.services.validation_service import infer_problem_type_from_profile, validate_target
 from app.services.evaluation_profile_service import get_evaluation_profile
 from app.services.explanation_service import explain_evaluation
@@ -90,9 +92,12 @@ def train_experiment(
             if not validation["is_valid"]:
                 raise ValueError("; ".join(validation["errors"]))
 
+            pipeline_kind = get_pipeline_kind(db, problem_type)
+
             job.status = "running"
             exp.status = "running"
             exp.problem_type = problem_type
+            exp.pipeline_kind = pipeline_kind
             db.commit()
 
             storage.ensure_bucket(settings.S3_BUCKET_ARTIFACTS)
@@ -101,7 +106,12 @@ def train_experiment(
             models_to_train = resolve_model_codes(db, problem_type, model_codes)
             run_summaries: list[dict] = []
 
-            for model_code, estimator_key, params_json in models_to_train:
+            for model_item in models_to_train:
+                if len(model_item) == 4:
+                    model_code, estimator_key, params_json, pipeline_config_json = model_item
+                else:
+                    model_code, estimator_key, params_json = model_item
+                    pipeline_config_json = None
                 model_def = db.scalar(
                     select(ModelDefinition).where(ModelDefinition.code == model_code)
                 )
@@ -119,13 +129,15 @@ def train_experiment(
                 db.refresh(run)
 
                 try:
-                    metrics, artifact_bytes, evaluation = train_single_model(
-                        csv_bytes,
-                        exp.target_column,
-                        problem_type,
-                        estimator_key,
-                        params_json,
-                        profile_config,
+                    metrics, artifact_bytes, evaluation = train_with_pipeline(
+                        pipeline_kind,
+                        csv_bytes=csv_bytes,
+                        target_column=exp.target_column,
+                        problem_type=problem_type,
+                        estimator_key=estimator_key,
+                        params_json=params_json,
+                        pipeline_config_json=pipeline_config_json,
+                        profile_config=profile_config,
                     )
                     model_key = f"{exp.owner_id}/{exp.id}/{model_code}.joblib"
                     storage.upload_bytes(

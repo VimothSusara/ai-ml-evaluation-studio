@@ -23,11 +23,21 @@ export function formatMetricLabel(key: string) {
   return labels[key] ?? key;
 }
 
+const THREE_DECIMAL_METRICS = new Set([
+  "accuracy",
+  "f1_weighted",
+  "precision_weighted",
+  "recall_weighted",
+  "roc_auc",
+  "r2",
+  "rmse",
+  "mae",
+]);
+
 export function formatMetricValue(key: string, value: number) {
-  if (key === "accuracy" || key === "f1_weighted" || key === "r2") {
+  if (THREE_DECIMAL_METRICS.has(key)) {
     return value.toFixed(3);
   }
-  if (key === "rmse") return value.toFixed(3);
   return String(value);
 }
 

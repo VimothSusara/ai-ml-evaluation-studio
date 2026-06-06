@@ -46,6 +46,7 @@ def get_recommendations(
         "target_column": target_column,
         "inferred_problem_type": inferred,
         "problem_type": problem_type,
+        "pipeline_kind": pt.pipeline_kind,
         "target_validation": target_validation,
         "recommendations": recommendations,
     }
@@ -55,8 +56,8 @@ def resolve_model_codes(
     db: Session,
     problem_type: str,
     requested_codes: list[str] | None,
-) -> list[tuple[str, str, str | None]]:
-    """Returns list of (model_code, estimator_key, params_json)."""
+) -> list[tuple[str, str, str | None, str | None]]:
+    """Returns list of (model_code, estimator_key, params_json, pipeline_config_json)."""
     pt = db.scalar(select(ProblemType).where(ProblemType.code == problem_type))
     if not pt:
         raise ValueError(f"Unknown problem type: {problem_type}")
@@ -65,11 +66,15 @@ def resolve_model_codes(
         select(ProblemTypeModel).where(ProblemTypeModel.problem_type_id == pt.id)
     ).all()
 
-    allowed = {}
+    allowed: dict[str, tuple[str, str | None, str | None]] = {}
     for link in links:
         m = db.get(ModelDefinition, link.model_id)
         if m and m.is_active:
-            allowed[m.code] = (m.estimator_key, m.default_params_json)
+            allowed[m.code] = (
+                m.estimator_key,
+                m.default_params_json,
+                m.pipeline_config_json,
+            )
 
     if requested_codes:
         codes = [c for c in requested_codes if c in allowed]
@@ -78,4 +83,4 @@ def resolve_model_codes(
     else:
         codes = [c for c, _ in allowed.items()]
 
-    return [(code, allowed[code][0], allowed[code][1]) for code in codes]
+    return [(code, allowed[code][0], allowed[code][1], allowed[code][2]) for code in codes]

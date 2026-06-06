@@ -11,13 +11,14 @@ from sklearn.pipeline import Pipeline
 
 from app.core.config import get_settings
 from app.db.models import Dataset, Experiment, ModelRun
+from app.services.pipeline_registry import get_pipeline_kind
 from app.services.storage_service import StorageService
 from app.services.training_service import pick_best_run
 
 settings = get_settings()
 storage = StorageService()
 
-SUPPORTED_PROBLEM_TYPES = {"classification", "regression"}
+SUPPORTED_PIPELINE_KINDS = {"tabular_sklearn"}
 
 
 def get_owned_model_run(run: ModelRun | None, experiment: Experiment | None, user_id) -> tuple[ModelRun, Experiment]:
@@ -25,8 +26,17 @@ def get_owned_model_run(run: ModelRun | None, experiment: Experiment | None, use
         raise ValueError("Model run not found")
     if run.status != "completed" or not run.model_s3_key:
         raise ValueError("Model is not ready for inference")
-    if experiment.problem_type not in SUPPORTED_PROBLEM_TYPES:
-        raise ValueError(f"Problem type '{experiment.problem_type}' is not supported for inference yet")
+    pipeline_kind = experiment.pipeline_kind
+    if not pipeline_kind:
+        # Backward-compat for rows created before pipeline_kind existed.
+        from app.db.session import SessionLocal
+
+        with SessionLocal() as db:
+            pipeline_kind = get_pipeline_kind(db, experiment.problem_type)
+    if pipeline_kind not in SUPPORTED_PIPELINE_KINDS:
+        raise ValueError(
+            f"Pipeline kind '{pipeline_kind}' is not supported for inference yet"
+        )
     return run, experiment
 
 
@@ -56,6 +66,7 @@ def build_manifest(run: ModelRun, experiment: Experiment, dataset: Dataset | Non
         "dataset_name": dataset.name if dataset else None,
         "model_code": run.model_code,
         "problem_type": experiment.problem_type,
+        "pipeline_kind": experiment.pipeline_kind or "tabular_sklearn",
         "target_column": experiment.target_column,
         "feature_columns": get_feature_columns(pipe),
         "metrics": metrics,

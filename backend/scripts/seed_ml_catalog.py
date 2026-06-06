@@ -9,15 +9,15 @@ settings = get_settings()
 engine = create_engine(settings.DATABASE_URL, future=True)
 
 PROBLEM_TYPES = [
-    ("classification", "Classification", "Predict discrete class labels"),
-    ("regression", "Regression", "Predict continuous numeric values"),
+    ("classification", "Classification", "Predict discrete class labels", "tabular_sklearn"),
+    ("regression", "Regression", "Predict continuous numeric values", "tabular_sklearn"),
 ]
 
 MODELS = [
-    ("random_forest_classifier", "Random Forest", "random_forest_classifier", {"n_estimators": 100, "random_state": 42}),
-    ("logistic_regression", "Logistic Regression", "logistic_regression", {"max_iter": 1000, "random_state": 42}),
-    ("random_forest_regressor", "Random Forest Regressor", "random_forest_regressor", {"n_estimators": 100, "random_state": 42}),
-    ("ridge_regression", "Ridge Regression", "ridge_regression", {"alpha": 1.0, "random_state": 42}),
+    ("random_forest_classifier", "Random Forest", "random_forest_classifier", {"n_estimators": 100, "random_state": 42}, None),
+    ("logistic_regression", "Logistic Regression", "logistic_regression", {"max_iter": 1000, "random_state": 42}, None),
+    ("random_forest_regressor", "Random Forest Regressor", "random_forest_regressor", {"n_estimators": 100, "random_state": 42}, None),
+    ("ridge_regression", "Ridge Regression", "ridge_regression", {"alpha": 1.0, "random_state": 42}, None),
 ]
 
 LINKS = [
@@ -52,16 +52,26 @@ EVALUATION_PROFILES = [
 def main():
     with Session(engine) as db:
         pt_map = {}
-        for code, name, desc in PROBLEM_TYPES:
+        for code, name, desc, pipeline_kind in PROBLEM_TYPES:
             row = db.scalar(select(ProblemType).where(ProblemType.code == code))
             if not row:
-                row = ProblemType(code=code, name=name, description=desc, is_active=True)
+                row = ProblemType(
+                    code=code,
+                    name=name,
+                    description=desc,
+                    pipeline_kind=pipeline_kind,
+                    is_active=True,
+                )
                 db.add(row)
                 db.flush()
+            else:
+                row.pipeline_kind = pipeline_kind
+                row.name = name
+                row.description = desc
             pt_map[code] = row
 
         md_map = {}
-        for code, display, est, params in MODELS:
+        for code, display, est, params, pipeline_config in MODELS:
             row = db.scalar(select(ModelDefinition).where(ModelDefinition.code == code))
             if not row:
                 row = ModelDefinition(
@@ -69,10 +79,20 @@ def main():
                     display_name=display,
                     estimator_key=est,
                     default_params_json=json.dumps(params),
+                    pipeline_config_json=(
+                        json.dumps(pipeline_config) if pipeline_config is not None else None
+                    ),
                     is_active=True,
                 )
                 db.add(row)
                 db.flush()
+            else:
+                row.display_name = display
+                row.estimator_key = est
+                row.default_params_json = json.dumps(params)
+                row.pipeline_config_json = (
+                    json.dumps(pipeline_config) if pipeline_config is not None else None
+                )
             md_map[code] = row
 
         for pt_code, md_code, priority, is_default, reason in LINKS:
@@ -110,8 +130,27 @@ def main():
                     )
                 )
 
+        for pt_code, schema_version, req_metrics, req_plots, opt_plots in EVALUATION_PROFILES:
+            exists = db.scalar(
+                select(EvaluationProfile).where(
+                    EvaluationProfile.problem_type_id == pt_map[pt_code].id,
+                    EvaluationProfile.schema_version == schema_version,
+                )
+            )
+            if not exists:
+                db.add(
+                    EvaluationProfile(
+                        problem_type_id=pt_map[pt_code].id,
+                        schema_version=schema_version,
+                        required_metrics_json=json.dumps(req_metrics),
+                        required_plots_json=json.dumps(req_plots),
+                        optional_plots_json=json.dumps(opt_plots),
+                        is_active=True,
+                    )
+                )
+
         db.commit()
-        print("ML catalog seeded.")
+        print("ML catalog seeded (problem types, models, requirements, evaluation profiles).")
 
 
 if __name__ == "__main__":

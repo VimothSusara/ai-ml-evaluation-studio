@@ -7,6 +7,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.api.v1 import admin, auth, datasets, experiments, jobs, catalog, model_runs
 from app.core.config import get_settings
 from app.services.storage_service import StorageService
+import app.services.trainers  # noqa: F401
 
 settings = get_settings()
 

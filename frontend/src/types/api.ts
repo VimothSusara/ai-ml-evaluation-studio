@@ -50,6 +50,7 @@ export interface RecommendationsResponse {
   target_column: string;
   inferred_problem_type: string;
   problem_type: string;
+  pipeline_kind?: string;
   target_validation: {
     is_valid: boolean;
     errors: string[];
@@ -92,6 +93,7 @@ export interface Experiment {
   target_column: string;
   problem_type: string;
   problem_type_override: string | null;
+  pipeline_kind?: string | null;
   status: JobStatus | string;
   metrics: Record<string, number> | null;
   evaluation: ModelEvaluation | null;
@@ -118,6 +120,7 @@ export interface ProblemType {
   code: string;
   name: string;
   description: string | null;
+  pipeline_kind?: string;
 }
 
 export interface EvaluationSplit {
