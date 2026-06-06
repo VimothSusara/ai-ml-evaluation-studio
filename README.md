@@ -1,5 +1,7 @@
 # Tabular ML Evaluation Studio
 
+<img width="1758" height="968" alt="Screenshot 2026-06-06 184106" src="https://github.com/user-attachments/assets/f50520c7-ccaf-4cc1-ba00-72c1f86bed8d" />
+
 Upload a CSV, profile it, pick a target column, train a few scikit-learn models, and compare results in one place. Includes job polling, evaluation charts, and single-row inference against the best run.
 
 This repo is a monorepo: `backend/` (FastAPI + Celery) and `frontend/` (Next.js).
@@ -132,6 +134,9 @@ With `--pool=solo`, only one Celery task runs at a time. A huge upload blocks tr
 **Spam CSV (Category + Message):** target = `Category` only. Do not use `Message` as the target; v1 does not train on free text yet.
 
 ---
+
+<img width="1347" height="971" alt="Screenshot 2026-06-06 184204" src="https://github.com/user-attachments/assets/1c8ee60d-e636-4971-aae8-ca325fca98a9" />
+<img width="1397" height="657" alt="Screenshot 2026-06-06 184217" src="https://github.com/user-attachments/assets/abbe6d4b-9446-4131-bb32-d6868ac1977d" />
 
 ## Repo layout
 
